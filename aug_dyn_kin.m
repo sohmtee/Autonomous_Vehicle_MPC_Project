@@ -1,7 +1,3 @@
-% True LTV-MPC — GTZ Kinematic / Dynamic Bicycle Model Switch
-% Solved efficiently using Quadratic Programming (quadprog)
-% EXACT DISCRETIZATION (Module 49)
-
 clc; clear; close all;
 
 %% Vehicle & controller parameters
@@ -111,7 +107,7 @@ model_log  = strings(sim_steps, 1);
 
 options = optimoptions('quadprog', 'Display', 'off');
 
-fprintf('Starting True LTV-MPC (%d steps)...\n', sim_steps);
+fprintf('Starting LTV-MPC (%d steps)...\n', sim_steps);
 
 %% Main simulation loop
 for k = 1 : sim_steps
@@ -163,7 +159,7 @@ for k = 1 : sim_steps
     v_log(k)     = vx_now;
     model_log(k) = active_model;
 
-    %% 1. Build Time-Varying Sequences for the Horizon
+    %% Build Time-Varying Sequences for the Horizon
     Phi_a_seq   = cell(Np, 1);
     Gamma_a_seq = cell(Np, 1);
     
@@ -189,7 +185,7 @@ for k = 1 : sim_steps
                    sin(psi_r + beta_r),   v_r * cos(psi_r + beta_r) * dbeta_ddelta;
                    sin(beta_r) / l2,     (v_r / l2) * cos(beta_r) * dbeta_ddelta];
             
-            % Exact Discretization (Module 49)
+            % Exact Discretization
             M_kin = expm([A_T, B_T(:,2); zeros(1, 4)] * delta_t);
             Phi   = M_kin(1:3, 1:3);
             Gamma = M_kin(1:3, 4);
@@ -198,7 +194,7 @@ for k = 1 : sim_steps
             A_c = dynMatrix_A(v_r_dyn, Cf, Cr, m, Iz, l1, l2);
             B_c = dynMatrix_B(Cf, m, l1, Iz);
             
-            % Exact Discretization (Module 49)
+            % Exact Discretization
             M_dyn = expm([A_c, B_c; zeros(1, 5)] * delta_t);
             Phi   = M_dyn(1:4, 1:4);
             Gamma = M_dyn(1:4, 5);
@@ -211,7 +207,7 @@ for k = 1 : sim_steps
                           C_mat*Gamma];
     end
     
-    %% 2. Build LTV Prediction Matrices (W, Z)
+    %% Build LTV Prediction Matrices (W, Z)
     n_a = n_st + p;
     W = zeros(p * Np, n_a);
     Z = zeros(p * Np, Np);
@@ -236,7 +232,7 @@ for k = 1 : sim_steps
         end
     end
     
-    %% 3. Define Constraints for Quadprog
+    %% Define Constraints for Quadprog
     lb_du = -du_max * ones(Np, 1);
     ub_du =  du_max * ones(Np, 1);
     
@@ -250,7 +246,7 @@ for k = 1 : sim_steps
     b_ineq = [U_max_vec - E_mat * u_prev; 
              -U_min_vec + E_mat * u_prev];
 
-    %% 4. Solve Quadratic Program
+    %% Solve Quadratic Program
     H_qp = Z' * Q_bar * Z + R_bar;
     H_qp = (H_qp + H_qp') / 2; % Enforce strict symmetry for MATLAB solver
     f_qp = Z' * Q_bar * (W * x_a);
@@ -266,7 +262,7 @@ for k = 1 : sim_steps
     
     u_current = u_prev + du_now;
 
-    %% 5. Propagate Nonlinear/Actual Plant
+    %% Propagate Nonlinear/Actual Plant
     e_kin_prev = e_kin;
     x_dyn_prev = x_dyn;
     
@@ -318,41 +314,76 @@ subplot(4,1,1);
 plot(t_plot, v_log, 'k-', 'LineWidth', 1.5); hold on;
 scatter(t_plot(kin_idx), v_log(kin_idx), 20, 'b', 'filled');
 scatter(t_plot(dyn_idx), v_log(dyn_idx), 20, 'r', 'filled');
-ax = gca; grid on; legend('Speed','Kinematic','Dynamic','Location','best');
-ylabel('v (m/s)');
+ax = gca; 
+ax.XAxis.FontSize = 20;
+ax.YAxis.FontSize = 20;
+ax.FontSize = 20;
+ax.LineWidth = 2;
+grid on; ylabel('$v$ (m/s)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28);
+legend('Speed','Kinematic','Dynamic', 'FontName','Times New Roman' ,'FontSize',15, 'Location','best');
 
 subplot(4,1,2);
 plot(t_plot, Y_ref(1:sim_steps), 'r--', 'LineWidth', 2); hold on;
 plot(t_plot, Y_log, 'b-', 'LineWidth', 2);
-ax = gca; grid on; legend('Y_{ref}','Y_{actual}','Location','best'); 
-ylabel('Y (m)');
+ax = gca; 
+ax.XAxis.FontSize = 20;
+ax.YAxis.FontSize = 20;
+ax.FontSize = 20; 
+ax.LineWidth = 2;
+grid on; legend('Y_{ref}','Y_{actual}', 'FontName','Times New Roman' ,'FontSize',18,'Location','best'); 
+ylabel('$Y$ (m)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28);
 
 subplot(4,1,3);
 plot(t_plot, psi_ref(1:sim_steps), 'r--', 'LineWidth', 2); hold on;
 plot(t_plot, psi_log, 'b-', 'LineWidth', 2);
-ax = gca; grid on; legend('\psi_{ref}','\psi_{actual}','Location','best'); 
-ylabel('\psi (rad)');
+ax = gca;
+ax.XAxis.FontSize = 20;
+ax.YAxis.FontSize = 20;
+ax.FontSize = 20; 
+ax.LineWidth = 2;
+grid on; legend('\psi_{ref}','\psi_{actual}', 'FontName','Times New Roman' ,'FontSize',18, 'Location','best'); 
+ylabel('$\psi$ (rad)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28);
 
 subplot(4,1,4);
 plot(t_plot, rad2deg(u_log), 'k-', 'LineWidth', 2);
 ax = gca;
+ax.XAxis.FontSize = 20;
+ax.YAxis.FontSize = 20;
+ax.FontSize = 20;
+ax.LineWidth = 2;
 yline( rad2deg(u_max),  'r--', 'LineWidth',2); yline(-rad2deg(u_max),  'r--', 'LineWidth',2);
-grid on; ylabel('\delta_f (deg)'); xlabel('Time (s)'); ylim([-30 30]);
+grid on; ylabel('$\delta_f$ (deg)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28);
+xlabel('Time (s)', 'FontName','Times New Roman' ,'FontSize',28); ylim([-40 40]);
 
 figure(2);
 subplot(3,1,1);
 plot(t_plot, e_psi_log, 'r-', 'LineWidth', 2);
-ax = gca; grid on; ylabel('e_\psi (rad)');
+ax = gca; 
+ax.XAxis.FontSize = 20;
+ax.YAxis.FontSize = 20;
+ax.FontSize = 20;
+ax.LineWidth = 2;
+grid on; ylabel('$e_\psi$ (rad)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28);
 
 subplot(3,1,2);
 plot(t_plot, e_y_log, 'b-', 'LineWidth', 2);
-ax = gca; grid on; ylabel('e_y (m)');
+ax = gca; 
+ax.XAxis.FontSize = 20;
+ax.YAxis.FontSize = 20;
+ax.FontSize = 20;
+ax.LineWidth = 2;
+grid on; ylabel('$e_y$ (m)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28);
 
 subplot(3,1,3);
 plot(t_plot, rad2deg(du_log), 'k-', 'LineWidth', 2);
 ax = gca;
+ax.XAxis.FontSize = 20;
+ax.YAxis.FontSize = 20;
+ax.FontSize = 20;
+ax.LineWidth = 2;
 yline( rad2deg(du_max),  'r--', 'LineWidth',2); yline(-rad2deg(du_max),  'r--', 'LineWidth',2);
-grid on; ylabel('\Delta\delta_f (deg/step)'); xlabel('Time (s)'); ylim([-10 10]);
+grid on; ylabel('$\Delta\delta_f$ (deg/step)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28);
+xlabel('Time (s)', 'FontName','Times New Roman' ,'FontSize',28); ylim([-10 10]);
 
 %% LOCAL FUNCTIONS
 

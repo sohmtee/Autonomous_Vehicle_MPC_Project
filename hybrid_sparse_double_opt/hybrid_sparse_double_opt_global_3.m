@@ -84,7 +84,8 @@ delta_r_ref = smooth(delta_r_ref, 3);
 delta_r_ref = max(min(delta_r_ref, u_max), -u_max);
 
 %% Load 2D UIO Gain Schedule
-load("observer_gain_schedule_with_M0.05.mat"); 
+% load("C:\Users\soguchie\OneDrive - purdue.edu\ECE 699\Summer 2025\RoadRunner Projects\Production code\observer gains\observer_gain_schedule_with_M0.02.mat"); 
+load('observer_gain_schedule_with_M0.05.mat')
 
 %% MPC Matrices & Output Setup
 Q_kin_bar = kron(eye(Np), diag([Q_x_kin, Q_psi_kin, Q_y_kin]));
@@ -160,6 +161,9 @@ ybar_c_y_log    = zeros(sim_steps, 1);
 Y_log           = zeros(sim_steps, 1);
 X_log           = zeros(sim_steps, 1);
 psi_log         = zeros(sim_steps, 1);
+X_est_log       = zeros(sim_steps, 1);
+Y_est_log       = zeros(sim_steps, 1);
+psi_est_log     = zeros(sim_steps, 1);
 v_log           = zeros(sim_steps, 1);
 u_log           = zeros(sim_steps, 2);
 ua_log          = zeros(sim_steps, 2);
@@ -358,6 +362,7 @@ for k = 1 : sim_steps
         % ERROR-SPACE UIO ESTIMATION
         M_now = interpGain2D(v_ref(k), psi_ref(k), vx_grid, psi_grid, M_schedule);
         x_dyn_err_est = z_uio_err + M_now * y_err_corrected;
+        x_dyn_err_est(2) = y_err_corrected(2);
         
         % RECONSTRUCT ABSOLUTE STATE FOR MPC
         v_y_r_k = v_ref(k) * sin(atan2(l2 * tan(delta_r_ref(k)), l1+l2));
@@ -399,6 +404,17 @@ for k = 1 : sim_steps
     psi_log(k)   = psi_global;
     v_log(k)     = vx_now;
     model_log(k) = active_model;
+
+    % log Global pose estimates
+    if strcmp(active_model, 'kinematic')
+        X_est_log(k)   = x_kin_est(1);
+        Y_est_log(k)   = x_kin_est(2);
+        psi_est_log(k) = x_kin_est(3);
+    else
+        X_est_log(k)   = x_dyn_est(5);
+        Y_est_log(k)   = x_dyn_est(4);
+        psi_est_log(k) = x_dyn_est(2);
+    end
 
     %% Build Time-Varying Sequences for the Horizon
     Phi_a_seq   = cell(Np, 1); 
@@ -476,9 +492,19 @@ for k = 1 : sim_steps
                 -U_min_vec + E_mat * u_prev];
 
     %% fmincon implementation of custom slides formulation
-    cost_func = @(DU) obj_with_gradient(DU, Y_ref_horizon, W * x_a, Z, Q_bar, R_bar);
-    
-    [delta_U_opt, ~, exitflag] = fmincon(cost_func, delta_U_guess, A_ineq, b_ineq, [], [], lb_du, ub_du, [], opt_fmincon);
+    % cost_func = @(DU) obj_with_gradient(DU, Y_ref_horizon, W * x_a, Z, Q_bar, R_bar);
+    % 
+    % [delta_U_opt, ~, exitflag] = fmincon(cost_func, delta_U_guess, A_ineq, b_ineq, [], [], lb_du, ub_du, [], opt_fmincon);
+
+    H_qp = Z' * Q_bar * Z + R_bar;
+    f_qp = Z' * Q_bar * (W * x_a - Y_ref_horizon);
+
+    H_qp = (H_qp + H_qp') / 2;
+
+    options_qp = optimoptions('quadprog', 'Display', 'off');
+
+    [delta_U_opt, ~, exitflag] = quadprog(H_qp, f_qp, A_ineq, b_ineq, ...
+                                          [], [], lb_du, ub_du, delta_U_guess, options_qp);
 
     if exitflag <= 0
         warning('Optimization failed at step %d. Coasting.', k); du_now = [0; 0];
@@ -592,6 +618,33 @@ ax = gca; ax.XAxis.FontSize = 20; ax.YAxis.FontSize = 20; ax.FontSize = 20; ax.L
 grid on; ylabel('$y^s_{3}, \tilde{y}^s_{3}$ (m)', 'Interpreter', 'latex', 'FontName','Times New Roman' ,'FontSize',28);
 legend('$y^s_{3}$ (True)', '$\tilde{y}^s_{3}$ (Estimated)', 'Interpreter', 'latex', 'FontName','Times New Roman' ,'FontSize',17, 'Location','best');
 xlabel('Time (s)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28); 
+
+figure(4);
+subplot(3,1,1);
+plot(t_plot, X_log, 'b-', 'LineWidth', 2); hold on;
+plot(t_plot, X_est_log, 'r--', 'LineWidth', 2);
+ax = gca; ax.XAxis.FontSize = 20; ax.YAxis.FontSize = 20; ax.FontSize = 20; ax.LineWidth = 2;
+grid on; 
+ylabel('Global $X$ (m)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28); 
+legend('True $X$', 'Estimated $\hat{X}$', 'Interpreter', 'latex', 'FontName','Times New Roman' ,'FontSize',17, 'Location','best');
+
+subplot(3,1,2);
+plot(t_plot, psi_log, 'b-', 'LineWidth', 2); hold on;
+plot(t_plot, psi_est_log, 'r--', 'LineWidth', 2);
+ax = gca; ax.XAxis.FontSize = 20; ax.YAxis.FontSize = 20; ax.FontSize = 20; ax.LineWidth = 2;
+grid on; 
+ylim([0,2*pi]);
+ylabel('Global $\psi$ (rad)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28);
+legend('True $\psi$', 'Estimated $\hat{\psi}$', 'Interpreter', 'latex', 'FontName','Times New Roman' ,'FontSize',17, 'Location','best');
+
+subplot(3,1,3);
+plot(t_plot, Y_log, 'b-', 'LineWidth', 2); hold on;
+plot(t_plot, Y_est_log, 'r--', 'LineWidth', 2);
+ax = gca; ax.XAxis.FontSize = 20; ax.YAxis.FontSize = 20; ax.FontSize = 20; ax.LineWidth = 2;
+grid on; 
+ylabel('Global $Y$ (m)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28); 
+xlabel('Time (s)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28);
+legend('True $Y$', 'Estimated $\hat{Y}$', 'Interpreter', 'latex', 'FontName','Times New Roman' ,'FontSize',17, 'Location','best');
 
 
 %% ===== Helper Functions =====

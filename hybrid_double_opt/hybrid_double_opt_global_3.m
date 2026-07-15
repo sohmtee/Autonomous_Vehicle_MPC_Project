@@ -508,25 +508,28 @@ xlabel('Time (s)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSiz
 figure(3);
 subplot(3,1,1);
 % plot(t_plot, y_ref_log(:,1), 'k--', 'LineWidth', 2); hold on;
-plot(t_plot, y_out_log(:,1), 'b-', 'LineWidth', 1.5);
+% plot(t_plot, y_out_log(:,1), 'b-', 'LineWidth', 1.5);
+plot(t_plot, X_log, 'b-', 'LineWidth', 1.5);
 ax = gca; ax.XAxis.FontSize = 20; ax.YAxis.FontSize = 20; ax.FontSize = 20; ax.LineWidth = 2;
 grid on; 
 % legend('Reference', 'Plant Output', 'FontName','Times New Roman' ,'FontSize',20, 'Location','best');
-ylabel('Path $X$ (m)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28); 
+ylabel('Global $X$ (m)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28); 
 
 subplot(3,1,2);
 % plot(t_plot, y_ref_log(:,3), 'k--', 'LineWidth', 2); hold on;
-plot(t_plot, y_out_log(:,3), 'b-', 'LineWidth', 1.5);
+% plot(t_plot, y_out_log(:,3), 'b-', 'LineWidth', 1.5);
+plot(t_plot, psi_log, 'b-', 'LineWidth', 1.5);
 ax = gca; ax.XAxis.FontSize = 20; ax.YAxis.FontSize = 20; ax.FontSize = 20; ax.LineWidth = 2;
 grid on; 
-ylabel('Path $Y$ (m)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28);
+ylabel('Global $\psi$ (rad)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28);
 
 subplot(3,1,3);
 % plot(t_plot, rad2deg(y_ref_log(:,2)), 'k--', 'LineWidth', 2); hold on;
-plot(t_plot, rad2deg(y_out_log(:,2)), 'r-', 'LineWidth', 1.5);
+% plot(t_plot, rad2deg(y_out_log(:,2)), 'r-', 'LineWidth', 1.5);
+plot(t_plot, Y_log, 'b-', 'LineWidth', 1.5);
 ax = gca; ax.XAxis.FontSize = 20; ax.YAxis.FontSize = 20; ax.FontSize = 20; ax.LineWidth = 2;
 grid on; 
-ylabel('Global $\psi$ (deg)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28); 
+ylabel('Global $Y$ (m)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28); 
 xlabel('Time (s)', 'Interpreter','latex', 'FontName','Times New Roman' ,'FontSize',28);
 
 

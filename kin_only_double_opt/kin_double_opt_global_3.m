@@ -24,7 +24,7 @@ u_max = deg2rad(25);
 
 vx_min_kin = 0;
 
-traj = readmatrix("C:\Users\soguchie\OneDrive - purdue.edu\ECE 699\Summer 2025\RoadRunner Projects\RoadRunner Project 1\Exports\BostonIntersection_design2\Sedan_1.csv");
+traj = readmatrix("C:\Users\soguchie\OneDrive - purdue.edu\ECE 699\Summer 2025\RoadRunner Projects\RoadRunner Project 1\Exports\BostonIntersection_design\Sedan_1.csv");
 
 time     = traj(:,1);
 X_path   = traj(:,2);
@@ -260,7 +260,7 @@ for k = 1 : sim_steps
 
     beta_cmd = atan2(l2 * tan(delta_act), l);
 
-    vx_pl = max(vx_act, eps);
+    vx_pl = max(vx_act, vx_min_kin);
 
     ode_dyn = @(~, xs) [-(2*Cf+2*Cr)/(m*vx_pl)*xs(1) - ((2*Cf*l1-2*Cr*l2)/(m*vx_pl) + vx_pl)*xs(3) + (2*Cf/m)*delta_act;
          xs(3);
